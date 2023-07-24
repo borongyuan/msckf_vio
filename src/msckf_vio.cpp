@@ -275,10 +275,12 @@ void MsckfVio::initializeGravityAndBias() {
   double gravity_norm = gravity_imu.norm();
   IMUState::gravity = Vector3d(0.0, 0.0, -gravity_norm);
 
-  Quaterniond q0_i_w = Quaterniond::FromTwoVectors(
-    gravity_imu, -IMUState::gravity);
-  state_server.imu_state.orientation =
-    rotationToQuaternion(q0_i_w.toRotationMatrix().transpose());
+  Eigen::Isometry3d T_b_w = Isometry3d::Identity();
+  T_b_w.linear() = Quaterniond::FromTwoVectors(
+    IMUState::T_imu_body.linear() * gravity_imu, -IMUState::gravity).toRotationMatrix();
+  Eigen::Isometry3d T_i_w = T_b_w * IMUState::T_imu_body;
+  state_server.imu_state.orientation = rotationToQuaternion(T_i_w.linear().transpose());
+  state_server.imu_state.position = T_i_w.translation();
 
   return;
 }
@@ -1372,8 +1374,7 @@ void MsckfVio::publish(const ros::Time& time) {
       imu_state.orientation).transpose();
   T_i_w.translation() = imu_state.position;
 
-  Eigen::Isometry3d T_b_w = IMUState::T_imu_body * T_i_w *
-    IMUState::T_imu_body.inverse();
+  Eigen::Isometry3d T_b_w = T_i_w * IMUState::T_imu_body.inverse();
   Eigen::Vector3d body_velocity =
     IMUState::T_imu_body.linear() * imu_state.velocity;
 
@@ -1431,10 +1432,8 @@ void MsckfVio::publish(const ros::Time& time) {
   for (const auto& item : map_server) {
     const auto& feature = item.second;
     if (feature.is_initialized) {
-      Vector3d feature_position =
-        IMUState::T_imu_body.linear() * feature.position;
       feature_msg_ptr->points.push_back(pcl::PointXYZ(
-            feature_position(0), feature_position(1), feature_position(2)));
+            feature.position(0), feature.position(1), feature.position(2)));
     }
   }
   feature_msg_ptr->width = feature_msg_ptr->points.size();
