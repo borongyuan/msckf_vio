@@ -50,7 +50,7 @@ Feature::OptimizationConfig Feature::optimization_config;
 
 map<int, double> MsckfVio::chi_squared_test_table;
 
-MsckfVio::MsckfVio(ros::NodeHandle& pnh):
+MsckfVio::MsckfVio(ros::NodeHandle* pnh):
   is_gravity_set(false),
   is_first_img(true),
   nh(pnh) {
@@ -59,26 +59,26 @@ MsckfVio::MsckfVio(ros::NodeHandle& pnh):
 
 bool MsckfVio::loadParameters() {
   // Frame id
-  nh.param<string>("fixed_frame_id", fixed_frame_id, "world");
-  nh.param<string>("child_frame_id", child_frame_id, "robot");
-  nh.param<bool>("publish_tf", publish_tf, true);
-  nh.param<double>("frame_rate", frame_rate, 40.0);
-  nh.param<double>("position_std_threshold", position_std_threshold, 8.0);
+  nh->param<string>("fixed_frame_id", fixed_frame_id, "world");
+  nh->param<string>("child_frame_id", child_frame_id, "robot");
+  nh->param<bool>("publish_tf", publish_tf, true);
+  nh->param<double>("frame_rate", frame_rate, 40.0);
+  nh->param<double>("position_std_threshold", position_std_threshold, 8.0);
 
-  nh.param<double>("rotation_threshold", rotation_threshold, 0.2618);
-  nh.param<double>("translation_threshold", translation_threshold, 0.4);
-  nh.param<double>("tracking_rate_threshold", tracking_rate_threshold, 0.5);
+  nh->param<double>("rotation_threshold", rotation_threshold, 0.2618);
+  nh->param<double>("translation_threshold", translation_threshold, 0.4);
+  nh->param<double>("tracking_rate_threshold", tracking_rate_threshold, 0.5);
 
   // Feature optimization parameters
-  nh.param<double>("feature/config/translation_threshold",
+  nh->param<double>("feature/config/translation_threshold",
       Feature::optimization_config.translation_threshold, 0.2);
 
   // Noise related parameters
-  nh.param<double>("noise/gyro", IMUState::gyro_noise, 0.001);
-  nh.param<double>("noise/acc", IMUState::acc_noise, 0.01);
-  nh.param<double>("noise/gyro_bias", IMUState::gyro_bias_noise, 0.001);
-  nh.param<double>("noise/acc_bias", IMUState::acc_bias_noise, 0.01);
-  nh.param<double>("noise/feature", Feature::observation_noise, 0.01);
+  nh->param<double>("noise/gyro", IMUState::gyro_noise, 0.001);
+  nh->param<double>("noise/acc", IMUState::acc_noise, 0.01);
+  nh->param<double>("noise/gyro_bias", IMUState::gyro_bias_noise, 0.001);
+  nh->param<double>("noise/acc_bias", IMUState::acc_bias_noise, 0.01);
+  nh->param<double>("noise/feature", Feature::observation_noise, 0.01);
 
   // Use variance instead of standard deviation.
   IMUState::gyro_noise *= IMUState::gyro_noise;
@@ -92,28 +92,28 @@ bool MsckfVio::loadParameters() {
   // implicitly. But the initial velocity and bias can be
   // set by parameters.
   // TODO: is it reasonable to set the initial bias to 0?
-  nh.param<double>("initial_state/velocity/x",
+  nh->param<double>("initial_state/velocity/x",
       state_server.imu_state.velocity(0), 0.0);
-  nh.param<double>("initial_state/velocity/y",
+  nh->param<double>("initial_state/velocity/y",
       state_server.imu_state.velocity(1), 0.0);
-  nh.param<double>("initial_state/velocity/z",
+  nh->param<double>("initial_state/velocity/z",
       state_server.imu_state.velocity(2), 0.0);
 
   // The initial covariance of orientation and position can be
   // set to 0. But for velocity, bias and extrinsic parameters,
   // there should be nontrivial uncertainty.
   double gyro_bias_cov, acc_bias_cov, velocity_cov;
-  nh.param<double>("initial_covariance/velocity",
+  nh->param<double>("initial_covariance/velocity",
       velocity_cov, 0.25);
-  nh.param<double>("initial_covariance/gyro_bias",
+  nh->param<double>("initial_covariance/gyro_bias",
       gyro_bias_cov, 1e-4);
-  nh.param<double>("initial_covariance/acc_bias",
+  nh->param<double>("initial_covariance/acc_bias",
       acc_bias_cov, 1e-2);
 
   double extrinsic_rotation_cov, extrinsic_translation_cov;
-  nh.param<double>("initial_covariance/extrinsic_rotation_cov",
+  nh->param<double>("initial_covariance/extrinsic_rotation_cov",
       extrinsic_rotation_cov, 3.0462e-4);
-  nh.param<double>("initial_covariance/extrinsic_translation_cov",
+  nh->param<double>("initial_covariance/extrinsic_translation_cov",
       extrinsic_translation_cov, 1e-4);
 
   state_server.state_cov = MatrixXd::Zero(21, 21);
@@ -129,18 +129,18 @@ bool MsckfVio::loadParameters() {
     state_server.state_cov(i, i) = extrinsic_translation_cov;
 
   // Transformation offsets between the frames involved.
-  Isometry3d T_imu_cam0 = utils::getTransformEigen(nh, "cam0/T_cam_imu");
+  Isometry3d T_imu_cam0 = utils::getTransformEigen(*nh, "cam0/T_cam_imu");
   Isometry3d T_cam0_imu = T_imu_cam0.inverse();
 
   state_server.imu_state.R_imu_cam0 = T_cam0_imu.linear().transpose();
   state_server.imu_state.t_cam0_imu = T_cam0_imu.translation();
   CAMState::T_cam0_cam1 =
-    utils::getTransformEigen(nh, "cam1/T_cn_cnm1");
+    utils::getTransformEigen(*nh, "cam1/T_cn_cnm1");
   IMUState::T_imu_body =
-    utils::getTransformEigen(nh, "T_imu_body").inverse();
+    utils::getTransformEigen(*nh, "T_imu_body").inverse();
 
   // Maximum number of camera states to be stored
-  nh.param<int>("max_cam_state_size", max_cam_state_size, 30);
+  nh->param<int>("max_cam_state_size", max_cam_state_size, 30);
 
   ROS_INFO("===========================================");
   ROS_INFO("fixed frame id: %s", fixed_frame_id.c_str());
@@ -177,21 +177,21 @@ bool MsckfVio::loadParameters() {
 }
 
 bool MsckfVio::createRosIO() {
-  odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
-  feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
+  /*odom_pub = nh->advertise<nav_msgs::Odometry>("odom", 10);
+  feature_pub = nh->advertise<sensor_msgs::PointCloud2>(
       "feature_point_cloud", 10);
 
-  reset_srv = nh.advertiseService("reset",
+  reset_srv = nh->advertiseService("reset",
       &MsckfVio::resetCallback, this);
 
-  imu_sub = nh.subscribe("imu", 100,
+  imu_sub = nh->subscribe("imu", 100,
       &MsckfVio::imuCallback, this);
-  feature_sub = nh.subscribe("features", 40,
+  feature_sub = nh->subscribe("features", 40,
       &MsckfVio::featureCallback, this);
 
-  mocap_odom_sub = nh.subscribe("mocap_odom", 10,
+  mocap_odom_sub = nh->subscribe("mocap_odom", 10,
       &MsckfVio::mocapOdomCallback, this);
-  mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
+  mocap_odom_pub = nh->advertise<nav_msgs::Odometry>("gt_odom", 1);*/
 
   return true;
 }
@@ -292,8 +292,8 @@ bool MsckfVio::resetCallback(
   ROS_WARN("Start resetting msckf vio...");
   // Temporarily shutdown the subscribers to prevent the
   // state from updating.
-  feature_sub.shutdown();
-  imu_sub.shutdown();
+ /* feature_sub.shutdown();
+  imu_sub.shutdown();*/
 
   // Reset the IMU state.
   IMUState& imu_state = state_server.imu_state;
@@ -312,17 +312,17 @@ bool MsckfVio::resetCallback(
 
   // Reset the state covariance.
   double gyro_bias_cov, acc_bias_cov, velocity_cov;
-  nh.param<double>("initial_covariance/velocity",
+  nh->param<double>("initial_covariance/velocity",
       velocity_cov, 0.25);
-  nh.param<double>("initial_covariance/gyro_bias",
+  nh->param<double>("initial_covariance/gyro_bias",
       gyro_bias_cov, 1e-4);
-  nh.param<double>("initial_covariance/acc_bias",
+  nh->param<double>("initial_covariance/acc_bias",
       acc_bias_cov, 1e-2);
 
   double extrinsic_rotation_cov, extrinsic_translation_cov;
-  nh.param<double>("initial_covariance/extrinsic_rotation_cov",
+  nh->param<double>("initial_covariance/extrinsic_rotation_cov",
       extrinsic_rotation_cov, 3.0462e-4);
-  nh.param<double>("initial_covariance/extrinsic_translation_cov",
+  nh->param<double>("initial_covariance/extrinsic_translation_cov",
       extrinsic_translation_cov, 1e-4);
 
   state_server.state_cov = MatrixXd::Zero(21, 21);
@@ -348,10 +348,10 @@ bool MsckfVio::resetCallback(
   is_first_img = true;
 
   // Restart the subscribers.
-  imu_sub = nh.subscribe("imu", 100,
+  /*imu_sub = nh->subscribe("imu", 100,
       &MsckfVio::imuCallback, this);
-  feature_sub = nh.subscribe("features", 40,
-      &MsckfVio::featureCallback, this);
+  feature_sub = nh->subscribe("features", 40,
+      &MsckfVio::featureCallback, this);*/
 
   // TODO: When can the reset fail?
   res.success = true;
@@ -486,12 +486,12 @@ void MsckfVio::mocapOdomCallback(
   //  body_velocity_gt;
 
   // Ground truth tf.
-  if (publish_tf) {
+  /*if (publish_tf) {
     tf::Transform T_b_w_gt_tf;
     tf::transformEigenToTF(T_b_w_gt, T_b_w_gt_tf);
     tf_pub.sendTransform(tf::StampedTransform(
           T_b_w_gt_tf, msg->header.stamp, fixed_frame_id, child_frame_id+"_mocap"));
-  }
+  }*/
 
   // Ground truth odometry.
   nav_msgs::Odometry mocap_odom_msg;
@@ -503,7 +503,7 @@ void MsckfVio::mocapOdomCallback(
   //tf::vectorEigenToMsg(body_velocity_gt,
   //    mocap_odom_msg.twist.twist.linear);
 
-  mocap_odom_pub.publish(mocap_odom_msg);
+ /* mocap_odom_pub.publish(mocap_odom_msg);*/
   return;
 }
 
@@ -1336,17 +1336,17 @@ void MsckfVio::onlineReset() {
 
   // Reset the state covariance.
   double gyro_bias_cov, acc_bias_cov, velocity_cov;
-  nh.param<double>("initial_covariance/velocity",
+  nh->param<double>("initial_covariance/velocity",
       velocity_cov, 0.25);
-  nh.param<double>("initial_covariance/gyro_bias",
+  nh->param<double>("initial_covariance/gyro_bias",
       gyro_bias_cov, 1e-4);
-  nh.param<double>("initial_covariance/acc_bias",
+  nh->param<double>("initial_covariance/acc_bias",
       acc_bias_cov, 1e-2);
 
   double extrinsic_rotation_cov, extrinsic_translation_cov;
-  nh.param<double>("initial_covariance/extrinsic_rotation_cov",
+  nh->param<double>("initial_covariance/extrinsic_rotation_cov",
       extrinsic_rotation_cov, 3.0462e-4);
-  nh.param<double>("initial_covariance/extrinsic_translation_cov",
+  nh->param<double>("initial_covariance/extrinsic_translation_cov",
       extrinsic_translation_cov, 1e-4);
 
   state_server.state_cov = MatrixXd::Zero(21, 21);
@@ -1379,13 +1379,13 @@ void MsckfVio::publish(const ros::Time& time) {
     IMUState::T_imu_body.linear() * imu_state.velocity;
 
   // Publish tf
-  if (publish_tf) {
+  /*if (publish_tf) {
     tf::Transform T_b_w_tf;
     tf::transformEigenToTF(T_b_w, T_b_w_tf);
     tf_pub.sendTransform(tf::StampedTransform(
           T_b_w_tf, time, fixed_frame_id, child_frame_id));
   }
-
+*/
   // Publish the odometry
   nav_msgs::Odometry odom_msg;
   odom_msg.header.stamp = time;
@@ -1421,7 +1421,7 @@ void MsckfVio::publish(const ros::Time& time) {
     for (int j = 0; j < 3; ++j)
       odom_msg.twist.covariance[i*6+j] = P_body_vel(i, j);
 
-  odom_pub.publish(odom_msg);
+  /*odom_pub.publish(odom_msg);*/
 
   // Publish the 3D positions of the features that
   // has been initialized.
@@ -1438,7 +1438,7 @@ void MsckfVio::publish(const ros::Time& time) {
   }
   feature_msg_ptr->width = feature_msg_ptr->points.size();
 
-  feature_pub.publish(feature_msg_ptr);
+  /*feature_pub.publish(feature_msg_ptr);*/
 
   return;
 }

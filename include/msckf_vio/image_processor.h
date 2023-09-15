@@ -31,7 +31,7 @@ namespace msckf_vio {
 class ImageProcessor {
 public:
   // Constructor
-  ImageProcessor(ros::NodeHandle& n);
+  ImageProcessor(ros::NodeHandle* n);
   // Disable copy and assign constructors.
   ImageProcessor(const ImageProcessor&) = delete;
   ImageProcessor operator=(const ImageProcessor&) = delete;
@@ -45,7 +45,7 @@ public:
   typedef boost::shared_ptr<ImageProcessor> Ptr;
   typedef boost::shared_ptr<const ImageProcessor> ConstPtr;
 
-private:
+public:
 
   /*
    * @brief ProcessorConfig Configuration parameters for
@@ -370,10 +370,10 @@ private:
   int after_ransac;
 
   // Ros node handle
-  ros::NodeHandle nh;
+  ros::NodeHandle * nh;
 
   // Subscribers and publishers.
-  message_filters::Subscriber<
+  /*message_filters::Subscriber<
     sensor_msgs::Image> cam0_img_sub;
   message_filters::Subscriber<
     sensor_msgs::Image> cam1_img_sub;
@@ -382,7 +382,7 @@ private:
   ros::Subscriber imu_sub;
   ros::Publisher feature_pub;
   ros::Publisher tracking_info_pub;
-  image_transport::Publisher debug_stereo_pub;
+  image_transport::Publisher debug_stereo_pub;*/
 
   // Debugging
   std::map<FeatureIDType, int> feature_lifetime;

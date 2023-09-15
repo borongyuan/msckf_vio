@@ -9,7 +9,7 @@
 
 namespace msckf_vio {
 void ImageProcessorNodelet::onInit() {
-  img_processor_ptr.reset(new ImageProcessor(getPrivateNodeHandle()));
+  img_processor_ptr.reset(new ImageProcessor(&getPrivateNodeHandle()));
   if (!img_processor_ptr->initialize()) {
     ROS_ERROR("Cannot initialize Image Processor...");
     return;

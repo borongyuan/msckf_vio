@@ -40,7 +40,7 @@ class MsckfVio {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     // Constructor
-    MsckfVio(ros::NodeHandle& pnh);
+    MsckfVio(ros::NodeHandle* pnh);
     // Disable copy and assign constructor
     MsckfVio(const MsckfVio&) = delete;
     MsckfVio operator=(const MsckfVio&) = delete;
@@ -61,7 +61,7 @@ class MsckfVio {
     typedef boost::shared_ptr<MsckfVio> Ptr;
     typedef boost::shared_ptr<const MsckfVio> ConstPtr;
 
-  private:
+  public:
     /*
      * @brief StateServer Store one IMU states and several
      *    camera states for constructing measurement
@@ -202,15 +202,15 @@ class MsckfVio {
     double tracking_rate_threshold;
 
     // Ros node handle
-    ros::NodeHandle nh;
+    ros::NodeHandle * nh;
 
     // Subscribers and publishers
-    ros::Subscriber imu_sub;
+    /*ros::Subscriber imu_sub;
     ros::Subscriber feature_sub;
     ros::Publisher odom_pub;
     ros::Publisher feature_pub;
     tf::TransformBroadcaster tf_pub;
-    ros::ServiceServer reset_srv;
+    ros::ServiceServer reset_srv;*/
 
     // Frame id
     std::string fixed_frame_id;
@@ -228,8 +228,8 @@ class MsckfVio {
     void mocapOdomCallback(
         const nav_msgs::OdometryConstPtr& msg);
 
-    ros::Subscriber mocap_odom_sub;
-    ros::Publisher mocap_odom_pub;
+    /*ros::Subscriber mocap_odom_sub;
+    ros::Publisher mocap_odom_pub;*/
     geometry_msgs::TransformStamped raw_mocap_odom_msg;
     Eigen::Isometry3d mocap_initial_frame;
 };

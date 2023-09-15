@@ -9,7 +9,7 @@
 
 namespace msckf_vio {
 void MsckfVioNodelet::onInit() {
-  msckf_vio_ptr.reset(new MsckfVio(getPrivateNodeHandle()));
+  msckf_vio_ptr.reset(new MsckfVio(&getPrivateNodeHandle()));
   if (!msckf_vio_ptr->initialize()) {
     ROS_ERROR("Cannot initialize MSCKF VIO...");
     return;
