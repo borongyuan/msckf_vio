@@ -217,7 +217,7 @@ bool MsckfVio::initialize() {
   for (int i = 1; i < 100; ++i) {
     boost::math::chi_squared chi_squared_dist(i);
     chi_squared_test_table[i] =
-      boost::math::quantile(chi_squared_dist, 0.05);
+      boost::math::quantile(chi_squared_dist, 0.95);
   }
 
   if (!createRosIO()) return false;
